@@ -1,2 +1,2 @@
-normal first line
-Whoami
+#!/bin/bash
+whoami
