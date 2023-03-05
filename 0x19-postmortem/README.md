@@ -23,7 +23,7 @@ At 6:54 PM, we attempted to rollback the problematic configuration change. This 
 
 Some jobs started to slowly recover, and we determined that the overall recovery would be faster by a restart of all of the API infrastructure servers globally. To help with the recovery, we turned off some of our monitoring systems which were triggering the bug. As a result, we decided to restart servers gradually (at 7:19 PM), to avoid possible cascading failures from a wide scale restart. By 7:49 PM, 25% of traffic was restored and 100% of traffic was routed to the API infrastructure at 7:58 PM.
 
-## Prevention against such problem in future
+## Corrective and Preventative Measures
 In the last two days, we’ve conducted an internal review and analysis of the outage. The following are actions we are taking to address the underlying causes of the issue and to help prevent recurrence and improve response times:
 - Disable the current configuration release mechanism until safer measures are implemented. (Completed.)
 - Change rollback process to be quicker and more robust.
