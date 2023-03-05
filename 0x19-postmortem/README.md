@@ -1,19 +1,35 @@
 # Google API infrastructure outage incident report
-Last week, it was reported that the platform was returning 500 Error on all requests made on the platform routes, all the services were down.  90% of the users were affected. The root cause was the failure of our master server web-01.
 
 ## Issue Summary
 From 6:26 PM to 7:58 PM PT, requests to most Google APIs resulted in 500 error response messages. Google applications that rely on these APIs also returned errors or had reduced functionality. At its peak, the issue affected 100% of traffic to this API infrastructure. Users could continue to access certain APIs that run on separate infrastructures. The root cause of this outage was an invalid configuration change that exposed a bug in a widely used internal library.
 
 ## Timeline
-The error was realized on Saturday 27th August 1000 hours (West Africa Time) when Mr Williams saw the master server lagging in speed. Our engineers on call disconnected the master server web-01 for further system analysis and channelled all requests to client server web-02. They soled problem by Sunday 27th August 2200 hours (West Africa Time).
+Timeline (all times West Africa Time)
+6:19 PM: Configuration push begins
+6:26 PM: Outage begins
+6:26 PM: Pagers alerted teams
+6:54 PM: Failed configuration change rollback
+7:15 PM: Successful configuration change rollback
+7:19 PM: Server restarts begin
+7:58 PM: 100% of traffic back online
 
-## cause and resolution
-The platform is served by 2 ubuntu cloud servers. The master server web-01 was connected to serve all requests, and it stopped functioning due to memory outage as a results of so many requests because during a previous test, the client server web-02 was disconnected temporarily for testing and was not connected to the load balancer afterwards. 
+## Root cause and resolution
+At 6:19 PM WAT, a configuration change was inadvertently released to our production environment without first being released to the testing enviroment. The change specified an invalid address for the authentication servers in production. This exposed a bug in the authentication libraries which caused them to block permanently while attempting to resolve the invalid address to physical services. In addition, the internal monitoring systems permanently blocked on this call to the authentication library. The combination of the bug and configuration error quickly caused all of the serving threads to be consumed. Traffic was permanently queued waiting for a serving thread to become available. The servers began repeatedly hanging and restarting as they attempted to recover and at 6:26 PM WAT, the service outage began.
 
 
-The issue was fixed when the master server was temporarily disconnected for memory clean-up then connected back to the loadbalancer and round-robin algorithm was configured so that both the master and client servers can handle equal amount of requests.
+At 6:26 PM WAT, the monitoring systems alerted our engineers who investigated and quickly escalated the issue. By 6:40 PM, the incident response team identified that the monitoring system was exacerbating the problem caused by this bug.
+
+At 6:54 PM, we attempted to rollback the problematic configuration change. This rollback failed due to complexity in the configuration system which caused our security checks to reject the rollback. These problems were addressed and we successfully rolled back at 7:15 PM.
+
+Some jobs started to slowly recover, and we determined that the overall recovery would be faster by a restart of all of the API infrastructure servers globally. To help with the recovery, we turned off some of our monitoring systems which were triggering the bug. As a result, we decided to restart servers gradually (at 7:19 PM), to avoid possible cascading failures from a wide scale restart. By 7:49 PM, 25% of traffic was restored and 100% of traffic was routed to the API infrastructure at 7:58 PM.
 
 ## Prevention against such problem in future
-- Choose the best loadbalancing algorithm for your programs
-- Always keep an eye on your servers to ensure they are running properly
-- Have extra back-up servers to prevent your program fro completely going offline during an issue
+In the last two days, we’ve conducted an internal review and analysis of the outage. The following are actions we are taking to address the underlying causes of the issue and to help prevent recurrence and improve response times:
+- Disable the current configuration release mechanism until safer measures are implemented. (Completed.)
+- Change rollback process to be quicker and more robust.
+- Fix the underlying authentication libraries and monitoring to correctly timeout/interrupt on errors.
+- Programmatically enforce staged rollouts of all configuration changes.
+- Improve process for auditing all high-risk configuration options.
+- Add a faster rollback mechanism and improve the traffic ramp-up process, so any future problems of this type can be corrected quickly.
+- Develop better mechanism for quickly delivering status notifications during incidents.
+Google is committed to continually and quickly improving our technology and operational processes to prevent outages. We appreciate your patience and again apologize for the impact to you, your users, and your organization. We thank you for your business and continued support.
